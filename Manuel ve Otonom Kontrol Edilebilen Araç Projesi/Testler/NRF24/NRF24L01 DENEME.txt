@@ -1,0 +1,91 @@
+Verici Modülün Kodu
+
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+RF24 radio(8, 7); // CE, CSN
+const byte addresses [][6] = {"00001", "00002"};  //alıcı ve verici adresleri
+
+char b[32];
+void setup() {
+  Serial.begin(115200);
+  radio.begin();                           //Telsiz iletişiminin başlatılması
+  radio.openWritingPipe(addresses[1]);     //Verileri göndereceğimiz adresin ayarlanması
+  radio.openReadingPipe(1, addresses[0]);  //Verileri alacağımız adresin ayarlanması
+  radio.setPALevel(RF24_PA_MIN); //Verici ve alıcı arasındaki mesafeye göre minimum veya maksimum olarak ayarlayabilirsiniz.
+}
+
+void loop() 
+{  
+  delay(5);
+  if(Serial.available()){
+    //Eğer seri porttan veri gelmişse
+    String a=Serial.readString();
+
+    //Gelen Stringi oku ve a değişkeninde tut
+    a.trim();
+
+    // a stringinin başında ve sonunda bulunan boşlukları ve "\n"(enter) varsa sil
+    a.toCharArray(b,32);
+    // a stringini b char dizisine çevir. 
+    radio.stopListening();         //Bu, modülü verici olarak ayarlar
+    radio.write(&b, 32);  //veri gönderilir.
+    Serial.println(a+" gonderildi");
+
+    //Verinin gönderildiği seri monitöre yazdırılır.
+    delay(5);
+
+    //5 mikrosaniye beklenir.
+  }
+
+  
+  radio.startListening();                            //Bu, modülü alıcı olarak ayarlar
+  if(radio.available()){
+
+    //nrf24l01 modülüne veri geldiyse
+    radio.read(&b, 32); //veriyi oku
+    Serial.println(String(b)+ " geldi");
+
+    // veriyi stringe çevir ve seri monitöre yazdır
+  }
+
+}
+
+
+
+Alıcı Modülün Kodu
+
+#include <SPI.h>
+#include <nRF24L01.h>
+#include <RF24.h>
+RF24 radio(8, 7); // CE, CSN
+const byte addresses [][6] = {"00001", "00002"};    //İki adresin ayarlanması. Biri iletmek ve biri almak için
+char b[32];
+void setup() {
+  Serial.begin(115200); // seri haberleşmeyi 115200 baudrate de başlatıyoruz.
+  radio.begin();                            //Telsiz iletişiminin başlatılması
+  radio.openWritingPipe(addresses[0]);      //Verileri göndereceğimiz adresin ayarlanması
+  radio.openReadingPipe(1, addresses[1]);   //Verileri alacağımız adresin ayarlanması
+  radio.setPALevel(RF24_PA_MIN);            //Verici ve alıcı arasındaki mesafeye göre minimum veya maksimum olarak ayarlayabilirsiniz.
+}
+
+void loop() 
+{
+  delay(5); //5 mikrosaniye bekliyoruz.
+  radio.startListening();                    //Bu, modülü alıcı olarak ayarlar
+  if (radio.available())                     //Eğer gelen veri varsa
+  {
+    radio.read(&b, 32); // gelen veriyi oku ve b değişkenine kaydet
+    Serial.println(String(b)+ " geldi"); //b char dizisini stringe çevir.
+    delay(5); //5 mikrosaniye bekle
+  }
+  if(Serial.available()){ //Seri haberleşmeden eğer veri geldiyse
+    String a=Serial.readString(); // gelen veriyi oku ve a değişkenine kaydet 
+    a.trim(); // a stringinin başında ve sonunda boşluk veya "\n"(enter) varsa sil
+    radio.stopListening();                           //Bu, modülü verici olarak ayarlar
+    a.toCharArray(b,32);  //a string değişkenini char dizisine çevirir
+    radio.write(&b, 32);   //b değişkeni gönderilir
+    Serial.println(a+" gonderildi"); // verinin gönderildiği seri monitöre yazdırılır.
+    
+  }
+}
